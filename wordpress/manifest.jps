@@ -17,7 +17,14 @@ onBeforeInstall: /scripts/beforeinstall.js?_r=${fn.random}
 
 skipNodeEmails: true
 
-nodes: definedInOnBeforeInstall
+nodes:
+- cloudlets: 1
+  nodeType: lemp
+  engine: "php7.4.30"
+  nodeGroup: "cp"
+  env:
+    REDIS_ENABLED: true
+    SERVER_WEBROOT: "/var/www/webroot/ROOT"
 
 settings:
   fields:
@@ -121,7 +128,6 @@ globals:
   SUCCESS: success
   EMAIL: default
   STACK: nginx
-  PHP_VERSION: 7.4.30
 
 onAfterInstallAddon [nodeGroup:cp, id:cdn]:
   - install: ${baseUrl}/scripts/setupCDN.jps
