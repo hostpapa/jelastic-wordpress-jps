@@ -7,7 +7,7 @@ edgeportCDN=false;
 wpmu=false;
 DOMAIN=false;
 
-SERVER_WEBROOT=/var/www/webroot/ROOT
+SERVER_WEBROOT=/var/www/webroot/ROOT/web
 
 ARGUMENT_LIST=(
     "purge"
@@ -104,8 +104,8 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-W3TC_OPTION_SET="${WP} --path=/var/www/webroot/ROOT/web w3-total-cache option set"
-LSCWP_OPTION_SET="${WP} --path=/var/www/webroot/ROOT/web litespeed-option set"
+W3TC_OPTION_SET="${WP} w3-total-cache option set"
+LSCWP_OPTION_SET="${WP} litespeed-option set"
 lOG="/var/log/run.log"
 
 COMPUTE_TYPE=$(grep "COMPUTE_TYPE=" /etc/jelastic/metainf.conf | cut -d"=" -f2)
@@ -113,12 +113,12 @@ COMPUTE_TYPE=$(grep "COMPUTE_TYPE=" /etc/jelastic/metainf.conf | cut -d"=" -f2)
 cd ${SERVER_WEBROOT};
 
 if [[ ${COMPUTE_TYPE} == *"llsmp"* || ${COMPUTE_TYPE} == *"litespeed"* ]] ; then
-	${WP} --path=/var/www/webroot/ROOT/web plugin install litespeed-cache --activate --path=${SERVER_WEBROOT}
-	CACHE_FLUSH="${WP} --path=/var/www/webroot/ROOT/web litespeed-purge all --path=${SERVER_WEBROOT}; rm -rf /var/www/webroot/.cache/vhosts/Jelastic/* "
+	${WP} plugin install litespeed-cache --activate --path=${SERVER_WEBROOT}
+	CACHE_FLUSH="${WP} litespeed-purge all --path=${SERVER_WEBROOT}; rm -rf /var/www/webroot/.cache/vhosts/Jelastic/* "
         WPCACHE='lscwp';
 elif [[ ${COMPUTE_TYPE} == *"lemp"* || ${COMPUTE_TYPE} == *"nginx"* ]] ; then
-	${WP} --path=/var/www/webroot/ROOT/web plugin install w3-total-cache --activate --path=${SERVER_WEBROOT}
-	CACHE_FLUSH="${WP} --path=/var/www/webroot/ROOT/web w3-total-cache flush all --path=${SERVER_WEBROOT}; /var/www/webroot/.cache/* "
+	${WP} plugin install w3-total-cache --activate --path=${SERVER_WEBROOT}
+	CACHE_FLUSH="${WP} w3-total-cache flush all --path=${SERVER_WEBROOT}; /var/www/webroot/.cache/* "
         WPCACHE="w3tc";
 else
         echo 'Compute type is not defined';
@@ -127,9 +127,9 @@ fi
 
 function checkCdnStatus () {
 if [ $WPCACHE == 'w3tc' ] ; then
-	CDN_ENABLE_CMD="${WP} --path=/var/www/webroot/ROOT/web w3-total-cache option set cdn.enabled true --type=boolean"
+	CDN_ENABLE_CMD="${WP} w3-total-cache option set cdn.enabled true --type=boolean"
 elif [ $WPCACHE == 'lscwp' ] ; then
-	CDN_ENABLE_CMD="${WP} --path=/var/www/webroot/ROOT/web litespeed-option set cdn true"
+	CDN_ENABLE_CMD="${WP} litespeed-option set cdn true"
 fi
 cat > ~/bin/checkCdnStatus.sh <<EOF
 #!/bin/bash
@@ -145,17 +145,17 @@ done 4< ~/bin/checkCdnContent.txt
 cd ${SERVER_WEBROOT}
 ${CDN_ENABLE_CMD} --path=${SERVER_WEBROOT} &>> /var/log/run.log
 ${CACHE_FLUSH}  &>> /var/log/run.log
-${WP} --path=/var/www/webroot/ROOT/web cache flush --path=${SERVER_WEBROOT} &>> /var/log/run.log
+${WP} cache flush --path=${SERVER_WEBROOT} &>> /var/log/run.log
 crontab -l | sed "/checkCdnStatus/d" | crontab -
 EOF
 chmod +x ~/bin/checkCdnStatus.sh
-PROTOCOL=$(${WP} --path=/var/www/webroot/ROOT/web option get siteurl --path=${SERVER_WEBROOT} | cut -d':' -f1)
+PROTOCOL=$(${WP} option get siteurl --path=${SERVER_WEBROOT} | cut -d':' -f1)
 crontab -l | { cat; echo "* * * * * /bin/bash ~/bin/checkCdnStatus.sh ${PROTOCOL}://${CDN_URL}/"; } | crontab
 }
 
 if [ $purge == 'true' ] ; then
 	${CACHE_FLUSH} &>> /var/log/run.log
-	${WP} --path=/var/www/webroot/ROOT/web cache flush --path=${SERVER_WEBROOT} &>> /var/log/run.log
+	${WP} cache flush --path=${SERVER_WEBROOT} &>> /var/log/run.log
 	[ -d /tmp/lscache/vhosts/ ] && /usr/bin/rm -rf /tmp/lscache/vhosts/Jelastic/* &>> /var/log/run.log
 fi
 
@@ -195,7 +195,7 @@ if [ $objectcache == 'true' ] ; then
 fi
 
 if [ $edgeportCDN == 'true' ] ; then
-  if ! $(${WP} --path=/var/www/webroot/ROOT/web core is-installed --network --path=${SERVER_WEBROOT}); then 
+  if ! $(${WP} core is-installed --network --path=${SERVER_WEBROOT}); then 
     case $WPCACHE in
       w3tc)
           checkCdnStatus;
@@ -205,8 +205,8 @@ if [ $edgeportCDN == 'true' ] ; then
           ;;
       lscwp)
         checkCdnStatus;
-        CDN_ORI=$(${WP} --path=/var/www/webroot/ROOT/web option get siteurl --path=${SERVER_WEBROOT} | cut -d'/' -f3)
-        PROTOCOL=$(${WP} --path=/var/www/webroot/ROOT/web option get siteurl --path=${SERVER_WEBROOT} | cut -d':' -f1)
+        CDN_ORI=$(${WP} option get siteurl --path=${SERVER_WEBROOT} | cut -d'/' -f3)
+        PROTOCOL=$(${WP} option get siteurl --path=${SERVER_WEBROOT} | cut -d':' -f1)
         $LSCWP_OPTION_SET cdn false --path=${SERVER_WEBROOT} &>> /var/log/run.log
         $LSCWP_OPTION_SET cdn-mapping[url][0] ${PROTOCOL}://${CDN_URL}/ --path=${SERVER_WEBROOT} &>> /var/log/run.log
         $LSCWP_OPTION_SET cdn-ori "//${CDN_ORI}/" --path=${SERVER_WEBROOT} &>> /var/log/run.log
@@ -218,29 +218,29 @@ fi
 if [ $wpmu == 'true' ] ; then
   case $WPCACHE in
     w3tc)
-          ${WP} --path=/var/www/webroot/ROOT/web plugin deactivate w3-total-cache --path=${SERVER_WEBROOT} &>> /var/log/run.log
-	  [[ ${MODE} == 'subdir' ]] && ${WP} --path=/var/www/webroot/ROOT/web core multisite-convert --path=${SERVER_WEBROOT} &>> /var/log/run.log
-	  [[ ${MODE} == 'subdom' ]] && ${WP} --path=/var/www/webroot/ROOT/web core multisite-convert --path=${SERVER_WEBROOT} --subdomains &>> /var/log/run.log
-	  ${WP} --path=/var/www/webroot/ROOT/web plugin activate w3-total-cache --path=${SERVER_WEBROOT} &>> /var/log/run.log
+          ${WP} plugin deactivate w3-total-cache --path=${SERVER_WEBROOT} &>> /var/log/run.log
+	  [[ ${MODE} == 'subdir' ]] && ${WP} core multisite-convert --path=${SERVER_WEBROOT} &>> /var/log/run.log
+	  [[ ${MODE} == 'subdom' ]] && ${WP} core multisite-convert --path=${SERVER_WEBROOT} --subdomains &>> /var/log/run.log
+	  ${WP} plugin activate w3-total-cache --path=${SERVER_WEBROOT} &>> /var/log/run.log
           ;;
     lscwp)
-          ${WP} --path=/var/www/webroot/ROOT/web plugin deactivate litespeed-cache --path=${SERVER_WEBROOT} &>> /var/log/run.log
-          [[ ${MODE} == 'subdir' ]] && ${WP} --path=/var/www/webroot/ROOT/web core multisite-convert --path=${SERVER_WEBROOT} &>> /var/log/run.log
-          [[ ${MODE} == 'subdom' ]] && ${WP} --path=/var/www/webroot/ROOT/web core multisite-convert --path=${SERVER_WEBROOT} --subdomains &>> /var/log/run.log
-          ${WP} --path=/var/www/webroot/ROOT/web plugin activate litespeed-cache --path=${SERVER_WEBROOT} &>> /var/log/run.log
+          ${WP} plugin deactivate litespeed-cache --path=${SERVER_WEBROOT} &>> /var/log/run.log
+          [[ ${MODE} == 'subdir' ]] && ${WP} core multisite-convert --path=${SERVER_WEBROOT} &>> /var/log/run.log
+          [[ ${MODE} == 'subdom' ]] && ${WP} core multisite-convert --path=${SERVER_WEBROOT} --subdomains &>> /var/log/run.log
+          ${WP} plugin activate litespeed-cache --path=${SERVER_WEBROOT} &>> /var/log/run.log
           ;;
   esac
 fi
 
 if [ $DOMAIN != 'false' ] ; then
-  if ! $(${WP} --path=/var/www/webroot/ROOT/web core is-installed --network --path=${SERVER_WEBROOT}); then 
-	OLD_DOMAIN=$(${WP} --path=/var/www/webroot/ROOT/web option get siteurl --path=${SERVER_WEBROOT})
-	OLD_SHORT_DOMAIN=$(${WP} --path=/var/www/webroot/ROOT/web option get siteurl --path=${SERVER_WEBROOT} | cut -d'/' -f3)
+  if ! $(${WP} core is-installed --network --path=${SERVER_WEBROOT}); then 
+	OLD_DOMAIN=$(${WP} option get siteurl --path=${SERVER_WEBROOT})
+	OLD_SHORT_DOMAIN=$(${WP} option get siteurl --path=${SERVER_WEBROOT} | cut -d'/' -f3)
 	NEW_SHORT_DOMAIN=$(echo $DOMAIN | cut -d'/' -f3)
 
-	${WP} --path=/var/www/webroot/ROOT/web search-replace "${OLD_DOMAIN}" "${DOMAIN}" --skip-columns=guid --all-tables --path=${SERVER_WEBROOT} &>> /var/log/run.log
-	${WP} --path=/var/www/webroot/ROOT/web search-replace "${OLD_SHORT_DOMAIN}" "${NEW_SHORT_DOMAIN}" --skip-columns=guid --all-tables --path=${SERVER_WEBROOT} &>> /var/log/run.log
+	${WP} search-replace "${OLD_DOMAIN}" "${DOMAIN}" --skip-columns=guid --all-tables --path=${SERVER_WEBROOT} &>> /var/log/run.log
+	${WP} search-replace "${OLD_SHORT_DOMAIN}" "${NEW_SHORT_DOMAIN}" --skip-columns=guid --all-tables --path=${SERVER_WEBROOT} &>> /var/log/run.log
 	${CACHE_FLUSH}  &>> /var/log/run.log
-	${WP} --path=/var/www/webroot/ROOT/web cache flush --path=${SERVER_WEBROOT} &>> /var/log/run.log
+	${WP} cache flush --path=${SERVER_WEBROOT} &>> /var/log/run.log
   fi
 fi
