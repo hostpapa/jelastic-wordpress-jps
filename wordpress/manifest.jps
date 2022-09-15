@@ -20,7 +20,7 @@ skipNodeEmails: true
 nodes:
 - cloudlets: 1
   nodeType: lemp
-  engine: "php7.4.30"
+  tag: "1.22.0-php-7.4.30"
   nodeGroup: "cp"
   env:
     REDIS_ENABLED: true
