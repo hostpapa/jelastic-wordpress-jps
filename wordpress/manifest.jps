@@ -252,6 +252,7 @@ actions:
         wp_url: ${globals.PROTOCOL}://${globals.DOMAIN}/
         version_wordpress: ${globals.version_wordpress}
         targetNodeID: ${nodes.cp.master.id}
+        github_token: "foobar"
 
   setupNode:
     - log: OPTIMIZATION
