@@ -121,6 +121,7 @@ globals:
   SUCCESS: success
   EMAIL: default
   STACK: nginx
+  PHP_VERSION: 7.4.30
 
 onAfterInstallAddon [nodeGroup:cp, id:cdn]:
   - install: ${baseUrl}/scripts/setupCDN.jps
